@@ -100,8 +100,7 @@ class TournamentResults:
         return self.total_time / max(1, self.total_games)
     
     def get_matches_by_engine(self, engine: int) -> list[MatchData]:
-        filtered_matches = [x for x in self.match_data if engine in x.engines]
-        return filtered_matches
+        return [x for x in self.match_data if engine in x.engines]
     
     def get_game_count_by_engine(self, engine: int) -> int:
         return self.game_counts[engine]
@@ -135,7 +134,7 @@ class TournamentResults:
             return f"Invalid sort field '{sort_by}', must specify a list of length >0"
         if not isinstance(sort_attr[0], int) and not isinstance(sort_attr[0], float):
             return f"Invalid sort field '{sort_by}', must specify a numeric list"
-        if sort_dir != 'asc' and sort_dir != 'desc':
+        if sort_dir not in ['asc', 'desc']:
             return f"Invalid sort direction '{sort_dir}', try 'asc' or 'desc'"
 
         out = f"Ranking by {sort_by} {sort_dir}:\n"
@@ -184,11 +183,11 @@ class Tournament:
             The default time control if `play` doesn't override it
         """
         
-        if (len(engines) < 1):
+        if not engines:
             raise Exception("Number of engines must be greater than 0")
         if move_seconds <= 0:
             raise Exception("Must allow greater than 0 seconds per move")
-        
+
         self.engines = list(engines)
         self._seconds = move_seconds
         self.move_seconds = self._seconds
@@ -227,11 +226,11 @@ class Tournament:
             raise Exception("Must use at least one thread")
         if players_per_game < 1 or players_per_game > 4:
             raise Exception("Must have 1 to 4 players per game")
-        
+
         self.move_seconds = move_seconds if move_seconds is not None else self._seconds
         if self.move_seconds <= 0:
             raise Exception("Must allow greater than 0 seconds per move")
-        
+
         # initialize trackers and game controls
         N = len(self.engines)
         total_games = 0
@@ -240,7 +239,7 @@ class Tournament:
         elos = [0 for _ in range(N)]
         totals = [0 for _ in range(N)]
 
-        initial_elos = [i for i in elos]
+        initial_elos = list(elos)
         match_results: list[MatchData] = []
 
         # helper for getting engine rank summaries
@@ -252,7 +251,7 @@ class Tournament:
                 name = self.engines[engine].name
                 win_count, game_count = wins[engine], games[engine]
                 score, elo = totals[engine], elos[engine]
-                
+
                 win_rate = f"{(win_count / game_count * 100):>8.2f}%" if game_count > 0 else f"{'-':>9}"
                 avg_score = f"{(score / game_count):>10.2f}" if game_count > 0 else f"{'-':>10}"
 
@@ -261,7 +260,7 @@ class Tournament:
             return out
 
         # prepare turn orders for the various games
-        args = [] 
+        args = []
         for _ in range(n_games): 
             order = list(range(N))
             random.shuffle(order) 
@@ -294,7 +293,7 @@ class Tournament:
                         player_names = [self.engines[i].name for i in game_players]
                         player_scores = [scores[i] for i in game_players]
                         winner_names = [self.engines[i].name for i in winners]
-                        
+
                         # if there are enough players, compute elo changes
                         if board.n_players > 1:
                             player_elos = [elos[i] for i in game_players]

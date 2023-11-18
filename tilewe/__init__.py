@@ -180,25 +180,23 @@ class _PieceRotationPoint:
 
     def __init__(self, name: str, rot: _PieceRotation, pt: Tile): 
         self.id = len(_PIECE_ROTATION_POINTS)
-        self.as_set = 1 << self.id 
+        self.as_set = 1 << self.id
         global _PRP_SET_ALL
         _PRP_SET_ALL |= self.as_set
-        self.piece = rot.piece 
-        self.rotation = rot 
-        self.piece_id = self.piece.id 
-        self.name = name 
-        self.contact = pt 
+        self.piece = rot.piece
+        self.rotation = rot
+        self.piece_id = self.piece.id
+        self.name = name
+        self.contact = pt
         _PIECE_ROTATION_POINTS.append(self) 
 
         dy, dx = pt 
-        
+
         self.tiles: list[Tile] = []
         self.adjacent: set[Tile] = set()
         self.corners: set[Tile] = set()
 
-        for y, x in rot.tiles: 
-            self.tiles.append((y - dy, x - dx))
-
+        self.tiles.extend((y - dy, x - dx) for y, x in rot.tiles)
         for y, x in self.tiles: 
             for cy, cx in [(-1, 0), (1, 0), (0, -1), (0, 1)]: 
                 rel = (y + cy, x + cx)
@@ -210,7 +208,7 @@ class _PieceRotationPoint:
                 rel = (y + cy, x + cx)
                 if rel not in self.tiles and rel not in self.adjacent: 
                     self.corners.add(rel) 
-            
+
         self.adjacent = sorted(list(self.adjacent))
         self.corners = sorted(list(self.corners))
 
@@ -222,7 +220,7 @@ _PIECE_ROTATIONS: list[_PieceRotation] = []
 _PIECE_ROTATION_POINTS: list[_PieceRotationPoint] = []
 _PRP_SET_ALL: _PrpSet = 0
 
-def _create_piece(name: str, shape: list[list[int]]) -> Piece: 
+def _create_piece(name: str, shape: list[list[int]]) -> Piece:
     """
     Adds a piece to the game data, including all rotation and 
     horizontal flips of that piece.
@@ -240,11 +238,11 @@ def _create_piece(name: str, shape: list[list[int]]) -> Piece:
         The new id assigned to this piece
     """
 
-    global PIECE_COUNT 
-    id = PIECE_COUNT 
-    PIECE_COUNT += 1 
-    pc = _Piece(name, id) 
-    _PIECES.append(pc) 
+    global PIECE_COUNT
+    id = PIECE_COUNT
+    PIECE_COUNT += 1
+    pc = _Piece(name, id)
+    _PIECES.append(pc)
     f_names = []
 
     def add(suffix: str, arr: np.ndarray):
@@ -253,8 +251,8 @@ def _create_piece(name: str, shape: list[list[int]]) -> Piece:
         for uniqueness across rotations and horizontal flips.
         """
 
-        rot = None 
-        unique = True 
+        rot = None
+        unique = True
         cur_rot = len(pc.rotations)
         true_rot = cur_rot  # assume rotation is unique 
 
@@ -268,34 +266,34 @@ def _create_piece(name: str, shape: list[list[int]]) -> Piece:
         if rot is None: 
             rot = _PieceRotation(name + suffix, pc, len(pc.rotations), arr)
 
-        f_names.append(suffix + "f")
-        pc.rotations.append(rot) 
-        pc.unique.append(unique) 
-        pc.true_rot.append(true_rot) 
-        pc.true_rot_for.append([]) 
+        f_names.append(f"{suffix}f")
+        pc.rotations.append(rot)
+        pc.unique.append(unique)
+        pc.true_rot.append(true_rot)
+        pc.true_rot_for.append([])
         pc.true_rot_for[true_rot].append(cur_rot)
 
     # original shape, north
-    cur = np.array(shape, dtype=np.uint8)[::-1] 
+    cur = np.array(shape, dtype=np.uint8)[::-1]
     add("n", cur) 
 
     # east
-    cur = np.rot90(cur, 1) 
+    cur = np.rot90(cur, 1)
     add("e", cur)
 
     # south
-    cur = np.rot90(cur, 1) 
+    cur = np.rot90(cur, 1)
     add("s", cur)
 
     # west
-    cur = np.rot90(cur, 1) 
+    cur = np.rot90(cur, 1)
     add("w", cur)
 
     # flipped 
-    n_unflipped = len(pc.rotations) 
+    n_unflipped = len(pc.rotations)
     for i in range(n_unflipped): 
         add(f_names[i], np.fliplr(pc.rotations[i].shape)) 
-        
+
     return id 
 
 # setup the 21 piece shapes
@@ -418,9 +416,7 @@ for _pt in _PIECE_ROTATION_POINTS:
     for _tile in _pt.adjacent: 
         _PRP_WITH_ADJ_REL_COORD[_tile] |= _pt.as_set
 
-_PRP_REL_COORDS: set[Tile] = set()
-for _pt in _PRP_WITH_REL_COORD:
-    _PRP_REL_COORDS.add(_pt)
+_PRP_REL_COORDS: set[Tile] = set(_PRP_WITH_REL_COORD)
 for _pt in _PRP_WITH_ADJ_REL_COORD:
     _PRP_REL_COORDS.add(_pt)
 _PRP_REL_COORDS = list(_PRP_REL_COORDS)
@@ -664,10 +660,7 @@ class Move:
             self.to_tile == value.to_tile 
 
     def __eq__(self, value: object) -> bool:
-        if isinstance(value, Move): 
-            return self.is_equal(value) 
-        else: 
-            return False 
+        return self.is_equal(value) if isinstance(value, Move) else False 
         
     def to_unique(self) -> 'Move':
         """
@@ -714,9 +707,9 @@ class Board:
         if n_players < 1 or n_players > 4: 
             raise Exception("Number of players must be between 1 and 4") 
 
-        self._state: list[_BoardState] = [] 
-        self._tiles = np.zeros((20, 20), dtype=np.uint8) 
-        self._n_players = n_players 
+        self._state: list[_BoardState] = []
+        self._tiles = np.zeros((20, 20), dtype=np.uint8)
+        self._n_players = n_players
         self._players: list[_Player] = []
 
         chars = [
@@ -725,12 +718,10 @@ class Board:
             'R', 
             'G'
         ]
-        for i in range(n_players): 
-            self._players.append(_Player(chars[i], i, self))
-
+        self._players.extend(_Player(chars[i], i, self) for i in range(n_players))
         self.current_player: Color = BLUE
-        self.finished = False 
-        self.ply = 0 
+        self.finished = False
+        self.ply = 0
         self.moves: list[Move] = []
 
     def copy_current_state(self) -> 'Board': 
@@ -817,15 +808,15 @@ class Board:
         # target tile must be empty 
         if move.to_tile is None or self.color_at(move.to_tile) != NO_COLOR: 
             return False 
-        
+
         # piece must be real
         if move.piece is None or move.piece >= len(_PIECES) or move.piece < 0: 
-            return False 
+            return False
         pc = _PIECES[move.piece]
 
         # rotation must be real 
         if move.rotation is None or move.rotation >= len(ROTATIONS) or move.rotation < 0: 
-            return False 
+            return False
         pc_rot = pc.rotations[move.rotation] 
 
         # piece rotation must have the contact
@@ -835,21 +826,16 @@ class Board:
 
         # available permutations at the requested tile
         prps = player.corners.get(move.to_tile, None)
-        if prps is None: 
-            return False 
-
-        # permutation must fit at the corner square
-        return (prps & prp.as_set) != 0
+        return False if prps is None else (prps & prp.as_set) != 0
 
     def n_legal_moves(self, unique: bool=True, for_player: Color=None): 
         player = self._players[self.current_player if for_player is None else for_player]
         total = 0 
 
-        if unique: 
-            for prps in player.corners.values(): 
-                total += prps.bit_count() 
-        else: 
-            for prps in player.corners.values(): 
+        for prps in player.corners.values():
+            if unique: 
+                total += prps.bit_count()
+            else: 
                 while prps != 0: 
                     # get least significant bit
                     prp_id = (prps & -prps).bit_length() - 1
@@ -864,45 +850,34 @@ class Board:
         return total 
 
     def generate_legal_moves(self, unique: bool=True, for_player: Color=None): 
-        moves: list[Move] = [] 
+        moves: list[Move] = []
         player = self._players[self.current_player if for_player is None else for_player]
 
         # duplicate for loop so that we don't check the if statement for every permutation
-        if unique: 
-            for to_sq, prps in player.corners.items(): 
-                while prps != 0: 
-                    # get least significant bit
-                    prp_id = (prps & -prps).bit_length() - 1
-                    # remove it so the next LSB is another PRP
-                    prps ^= 1 << prp_id
+        for to_sq, prps in player.corners.items():
+                # duplicate for loop so that we don't check the if statement for every permutation
+            while prps != 0:
+                # get least significant bit
+                prp_id = (prps & -prps).bit_length() - 1
+                # remove it so the next LSB is another PRP
+                prps ^= 1 << prp_id
 
-                    prp = _PIECE_ROTATION_POINTS[prp_id]
+                prp = _PIECE_ROTATION_POINTS[prp_id]
 
+                    # duplicate for loop so that we don't check the if statement for every permutation
+                if unique: 
                     moves.append(Move(
                         prp.piece.id, 
                         prp.rotation.rotation, 
                         prp.contact, 
                         to_sq
                     ))
-        else: 
-            for to_sq, prps in player.corners.items(): 
-                while prps != 0: 
-                    # get least significant bit
-                    prp_id = (prps & -prps).bit_length() - 1
-                    # remove it so the next LSB is another PRP
-                    prps ^= 1 << prp_id
-
-                    prp = _PIECE_ROTATION_POINTS[prp_id]
-
+                else: 
                     # include permutations with non-unique rotations/flips
-                    for rot in prp.piece.true_rot_for[prp.rotation.rotation]: 
-                        moves.append(Move(
-                            prp.piece.id, 
-                            rot, 
-                            prp.contact, 
-                            to_sq
-                        ))
-                
+                    moves.extend(
+                        Move(prp.piece.id, rot, prp.contact, to_sq)
+                        for rot in prp.piece.true_rot_for[prp.rotation.rotation]
+                    )
         return moves 
 
     def push_null(self) -> None: 
@@ -998,7 +973,7 @@ class Board:
 
     def __str__(self): 
         out = "" 
-        
+
         board = self._tiles[::-1]
 
         chars = None
@@ -1027,14 +1002,12 @@ class Board:
         for player in self._players: 
             out += f"{player.name}: {int(player.score)} "
 
-            pcs = [_PIECES[pc] for pc in self._remaining_piece_set(player.id)]
-
-            if len(pcs) > 0: 
+            if pcs := [_PIECES[pc] for pc in self._remaining_piece_set(player.id)]:
                 pcs = sorted(pcs, key=lambda x: x.id) 
 
                 out += "( "
                 for pc in pcs: 
-                    out += pc.name + " " 
+                    out += f"{pc.name} "
                 out += ")\n"
             else:
                 out += "( )\n"

@@ -56,8 +56,7 @@ def compute_elo_adjustment_2(elo1: float, elo2: float, outcome: float, K: int = 
     
     p1_win_probability = elo_win_probability(elo1, elo2)
     new_elo1 = elo1 + K * (outcome - p1_win_probability)
-    delta_elo = new_elo1 - elo1
-    return delta_elo
+    return new_elo1 - elo1
 
 def compute_elo_adjustment_n(elos: list[float], scores: list[int], K: int = 32):
     """

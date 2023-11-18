@@ -110,15 +110,15 @@ class LargestPieceEngine(Engine):
         super().__init__(name)
 
     def on_search(self, board: tilewe.Board, _seconds: float) -> tilewe.Move:
-        moves = board.generate_legal_moves(unique=True) 
+        moves = board.generate_legal_moves(unique=True)
         random.shuffle(moves) 
 
-        best = max(moves, key=lambda m:
-            tilewe.n_piece_tiles(m.piece) * 100 +
-            tilewe.n_piece_corners(m.piece) * 10 +
-            tilewe.n_piece_contacts(m.piece))
-        
-        return best
+        return max(
+            moves,
+            key=lambda m: tilewe.n_piece_tiles(m.piece) * 100
+            + tilewe.n_piece_corners(m.piece) * 10
+            + tilewe.n_piece_contacts(m.piece),
+        )
 
 class MaximizeMoveDifferenceEngine(Engine): 
     """
@@ -213,7 +213,7 @@ class TileWeightEngine(Engine):
         'turtle': TURTLE_WEIGHTS
     }
 
-    def __init__(self, name: str="TileWeight", weight_map: str='wall_crawl', custom_weights: list[int | float]=None): 
+    def __init__(self, name: str="TileWeight", weight_map: str='wall_crawl', custom_weights: list[int | float]=None):
         """
         Current `weight_map` built-in options are 'wall_crawl' and 'turtle'
         Can optionally provide a custom set of weights instead
@@ -221,15 +221,15 @@ class TileWeightEngine(Engine):
 
         super().__init__(name)
 
-        if custom_weights is not None:
-            if len(custom_weights) != 20 * 20:
-                raise Exception("TileWeightEngine custom_weights must be a list of exactly 400 values")
-            self.weights = custom_weights
-        
-        else:
+        if custom_weights is None:
             if weight_map not in self.weight_maps:
                 raise Exception("TileWeightEngine given invalid weight_map choice")
             self.weights = self.weight_maps[weight_map]
+
+        elif len(custom_weights) != 20 * 20:
+            raise Exception("TileWeightEngine custom_weights must be a list of exactly 400 values")
+        else:
+            self.weights = custom_weights
 
     def on_search(self, board: tilewe.Board, _seconds: float) -> tilewe.Move: 
 
